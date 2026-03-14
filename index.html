@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nouvelor — Le Nouvel Or de la Location en Tunisie</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      padding: 80px 24px 60px;
+      background: radial-gradient(ellipse at 50% 60%, rgba(201,168,76,0.06) 0%, transparent 70%);
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(201,168,76,0.02) 60px, rgba(201,168,76,0.02) 61px),
+        repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(201,168,76,0.02) 60px, rgba(201,168,76,0.02) 61px);
+      pointer-events: none;
+    }
+    .hero-eyebrow {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.2s forwards;
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(52px, 8vw, 100px);
+      font-weight: 300;
+      line-height: 1.05;
+      color: var(--light);
+      margin-bottom: 8px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.35s forwards;
+    }
+    .hero-title em {
+      font-style: italic;
+      color: var(--gold);
+    }
+    .hero-subtitle {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 500px;
+      margin: 24px auto 48px;
+      line-height: 1.7;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.5s forwards;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.65s forwards;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 48px;
+      justify-content: center;
+      margin-top: 80px;
+      padding-top: 48px;
+      border-top: 1px solid rgba(201,168,76,0.1);
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.8s forwards;
+    }
+    .hero-stat-num {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 600;
+      color: var(--gold);
+    }
+    .hero-stat-label {
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* SEARCH BAR */
+    .search-bar {
+      display: flex;
+      gap: 0;
+      max-width: 600px;
+      margin: 0 auto;
+      background: var(--dark2);
+      border: 1px solid var(--dark4);
+      border-radius: var(--radius);
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.65s forwards;
+    }
+    .search-bar input {
+      flex: 1;
+      padding: 16px 20px;
+      background: none;
+      border: none;
+      color: var(--light);
+      font-size: 14px;
+    }
+    .search-bar input::placeholder { color: var(--muted2); }
+    .search-bar select {
+      padding: 16px 14px;
+      background: var(--dark3);
+      border: none;
+      border-left: 1px solid var(--dark4);
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .search-bar button {
+      padding: 16px 24px;
+      background: var(--gold);
+      color: var(--dark);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .search-bar button:hover { background: var(--gold-light); }
+
+    /* CATEGORIES */
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+    }
+    .cat-card {
+      background: var(--dark2);
+      border: 1px solid var(--dark4);
+      border-radius: var(--radius-lg);
+      padding: 28px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .cat-card:hover {
+      border-color: var(--gold);
+      transform: translateY(-3px);
+    }
+    .cat-icon { font-size: 32px; margin-bottom: 12px; }
+    .cat-name { font-size: 12px; font-weight: 500; letter-spacing: 0.5px; color: var(--light2); }
+
+    /* HOW IT WORKS */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+    .step { position: relative; }
+    .step-num {
+      font-family: var(--font-display);
+      font-size: 80px;
+      font-weight: 600;
+      color: rgba(201,168,76,0.08);
+      line-height: 1;
+      margin-bottom: -20px;
+    }
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 400;
+      color: var(--light);
+      margin-bottom: 12px;
+    }
+    .step-desc { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 768px) {
+      .cat-grid { grid-template-columns: repeat(3, 1fr); }
+      .steps { grid-template-columns: 1fr; }
+      .hero-stats { gap: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div style="position:relative;z-index:1;width:100%">
+      <div class="hero-eyebrow">Plateforme de location #1 en Tunisie</div>
+      <h1 class="hero-title">Le <em>nouvel or</em><br>de la location</h1>
+      <p class="hero-subtitle">Louez n'importe quoi — voitures, appareils photo, espaces, outils — directement entre particuliers partout en Tunisie.</p>
+
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Que cherchez-vous ?">
+        <select id="wilaya-select">
+          <option value="">Toute la Tunisie</option>
+        </select>
+        <button onclick="doSearch()">Chercher</button>
+      </div>
+
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-num" id="stat-listings">—</div>
+          <div class="hero-stat-label">Annonces actives</div>
+        </div>
+        <div>
+          <div class="hero-stat-num" id="stat-users">—</div>
+          <div class="hero-stat-label">Utilisateurs</div>
+        </div>
+        <div>
+          <div class="hero-stat-num">24</div>
+          <div class="hero-stat-label">Wilayas couvertes</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="section" style="background:var(--dark2);border-top:1px solid var(--dark4);border-bottom:1px solid var(--dark4)">
+    <div class="container">
+      <div class="section-title">Parcourir par catégorie</div>
+      <div class="gold-line"></div>
+      <div class="cat-grid" id="cat-grid"></div>
+    </div>
+  </section>
+
+  <!-- LATEST LISTINGS -->
+  <section class="section">
+    <div class="container">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title">Dernières annonces</div>
+        <a href="/pages/listings.html" class="btn btn-outline btn-sm">Voir tout</a>
+      </div>
+      <div class="gold-line"></div>
+      <div class="grid-listings" id="latest-listings">
+        <div style="color:var(--muted);font-size:13px">Chargement...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" style="background:var(--dark2);border-top:1px solid var(--dark4)">
+    <div class="container">
+      <div class="section-title">Comment ça marche</div>
+      <div class="gold-line"></div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-title">Publiez votre annonce</div>
+          <div class="step-desc">Créez un compte, prenez des photos de votre objet et publiez votre annonce en quelques minutes.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-title">Recevez des demandes</div>
+          <div class="step-desc">Les locataires vous envoient des demandes avec leurs dates souhaitées. Vous approuvez ou refusez.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-title">Rencontrez et louez</div>
+          <div class="step-desc">Convenez d'un lieu de rendez-vous, remettez l'objet et encaissez le paiement en espèces.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="section" style="text-align:center">
+    <div class="container">
+      <div class="section-title">Prêt à commencer ?</div>
+      <div class="gold-line" style="margin:16px auto 24px"></div>
+      <p style="color:var(--muted);font-size:15px;margin-bottom:36px;max-width:440px;margin-left:auto;margin-right:auto">Rejoignez des milliers de Tunisiens qui louent et font louer leurs biens sur Nouvelor.</p>
+      <div style="display:flex;gap:16px;justify-content:center">
+        <a href="/pages/auth.html?mode=register" class="btn btn-gold btn-lg">Créer un compte</a>
+        <a href="/pages/listings.html" class="btn btn-outline btn-lg">Parcourir les annonces</a>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-container"></div>
+
+  <script type="module">
+    import { renderNavbar, renderFooter, renderListingCard, WILAYAS, CATEGORY_ICONS } from './js/main.js'
+    import { supabase } from './js/supabase.js'
+    import { initAuth } from './js/main.js'
+
+    document.getElementById('navbar-container').innerHTML = renderNavbar()
+    document.getElementById('footer-container').innerHTML = renderFooter()
+    await initAuth()
+
+    // Populate wilayas
+    const wilayaSelect = document.getElementById('wilaya-select')
+    WILAYAS.forEach(w => {
+      const opt = document.createElement('option')
+      opt.value = w
+      opt.textContent = w
+      wilayaSelect.appendChild(opt)
+    })
+
+    // Categories
+    const catGrid = document.getElementById('cat-grid')
+    Object.entries(CATEGORY_ICONS).forEach(([name, icon]) => {
+      catGrid.innerHTML += `
+        <div class="cat-card" onclick="window.location.href='/pages/listings.html?category=${encodeURIComponent(name)}'">
+          <div class="cat-icon">${icon}</div>
+          <div class="cat-name">${name}</div>
+        </div>`
+    })
+
+    // Latest listings
+    const { data: listings } = await supabase
+      .from('listings')
+      .select('*, categories(nom)')
+      .eq('statut', 'actif')
+      .order('cree_le', { ascending: false })
+      .limit(8)
+
+    const grid = document.getElementById('latest-listings')
+    if (listings && listings.length > 0) {
+      grid.innerHTML = listings.map(renderListingCard).join('')
+    } else {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="empty-state-icon">🏷️</div>
+          <div class="empty-state-title">Aucune annonce pour l'instant</div>
+          <p>Soyez le premier à publier !</p>
+          <a href="/pages/publish.html" class="btn btn-gold">Publier une annonce</a>
+        </div>`
+    }
+
+    // Stats
+    const { count: listingsCount } = await supabase.from('listings').select('*', { count: 'exact', head: true }).eq('statut', 'actif')
+    const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true })
+    document.getElementById('stat-listings').textContent = listingsCount || 0
+    document.getElementById('stat-users').textContent = usersCount || 0
+
+    // Search function
+    window.doSearch = function() {
+      const q = document.getElementById('search-input').value
+      const w = document.getElementById('wilaya-select').value
+      let url = '/pages/listings.html?'
+      if (q) url += `q=${encodeURIComponent(q)}&`
+      if (w) url += `wilaya=${encodeURIComponent(w)}`
+      window.location.href = url
+    }
+
+    document.getElementById('search-input').addEventListener('keypress', e => {
+      if (e.key === 'Enter') window.doSearch()
+    })
+  </script>
+</body>
+</html>
