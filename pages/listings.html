@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parcourir les annonces — Nouvelor</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .listings-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    .filters-panel {
+      background: var(--dark2);
+      border: 1px solid var(--dark4);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      position: sticky;
+      top: 84px;
+    }
+    .filter-title {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+      margin-top: 20px;
+    }
+    .filter-title:first-child { margin-top: 0; }
+    .filter-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--light2);
+      border-radius: var(--radius);
+      transition: var(--transition);
+    }
+    .filter-option:hover { color: var(--gold); }
+    .filter-option input[type="checkbox"] { accent-color: var(--gold); }
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .results-count { font-size: 13px; color: var(--muted); }
+    .results-sort select {
+      background: var(--dark2);
+      border: 1px solid var(--dark4);
+      color: var(--light);
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .search-input-wrap {
+      position: relative;
+      margin-bottom: 24px;
+    }
+    .search-input-wrap input {
+      width: 100%;
+      padding: 14px 16px 14px 44px;
+      background: var(--dark2);
+      border: 1px solid var(--dark4);
+      border-radius: var(--radius);
+      color: var(--light);
+      font-size: 14px;
+    }
+    .search-input-wrap input:focus { border-color: var(--gold); }
+    .search-input-wrap::before {
+      content: '🔍';
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+    }
+    @media (max-width: 768px) {
+      .listings-layout { grid-template-columns: 1fr; }
+      .filters-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-container"></div>
+  <div class="page">
+    <div class="container section">
+      <div class="section-title">Toutes les annonces</div>
+      <div class="gold-line"></div>
+
+      <div class="search-input-wrap">
+        <input type="text" id="search-input" placeholder="Rechercher une annonce...">
+      </div>
+
+      <div class="listings-layout">
+        <!-- FILTERS -->
+        <div class="filters-panel">
+          <div class="filter-title">Catégorie</div>
+          <div id="category-filters"></div>
+
+          <div class="filter-title">Wilaya</div>
+          <select class="form-input" id="filter-wilaya" style="margin-bottom:12px">
+            <option value="">Toutes les wilayas</option>
+          </select>
+
+          <div class="filter-title">Prix max / jour</div>
+          <input type="number" class="form-input" id="filter-price" placeholder="ex: 100 DT" style="margin-bottom:20px">
+
+          <button class="btn btn-gold btn-full" onclick="applyFilters()">Appliquer</button>
+          <button class="btn btn-ghost btn-full mt-8" onclick="clearFilters()">Réinitialiser</button>
+        </div>
+
+        <!-- RESULTS -->
+        <div>
+          <div class="results-header">
+            <div class="results-count" id="results-count">Chargement...</div>
+            <div class="results-sort">
+              <select id="sort-select" onchange="applyFilters()">
+                <option value="cree_le">Plus récent</option>
+                <option value="prix_par_jour">Prix croissant</option>
+                <option value="note_moyenne">Mieux noté</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-listings" id="listings-grid">
+            <div style="color:var(--muted);font-size:13px">Chargement des annonces...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="footer-container"></div>
+
+  <script type="module">
+    import { renderNavbar, renderFooter, renderListingCard, WILAYAS, CATEGORY_ICONS, initAuth } from '../js/main.js'
+    import { supabase } from '../js/supabase.js'
+
+    document.getElementById('navbar-container').innerHTML = renderNavbar()
+    document.getElementById('footer-container').innerHTML = renderFooter()
+    await initAuth()
+
+    // Populate wilayas
+    const wilayaSelect = document.getElementById('filter-wilaya')
+    WILAYAS.forEach(w => {
+      const opt = document.createElement('option')
+      opt.value = w; opt.textContent = w
+      wilayaSelect.appendChild(opt)
+    })
+
+    // Category filters
+    const catContainer = document.getElementById('category-filters')
+    Object.entries(CATEGORY_ICONS).forEach(([name, icon]) => {
+      catContainer.innerHTML += `
+        <label class="filter-option">
+          <input type="checkbox" class="cat-check" value="${name}">
+          <span>${icon} ${name}</span>
+        </label>`
+    })
+
+    // Read URL params
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('q')) document.getElementById('search-input').value = params.get('q')
+    if (params.get('wilaya')) wilayaSelect.value = params.get('wilaya')
+    if (params.get('category')) {
+      document.querySelectorAll('.cat-check').forEach(cb => {
+        if (cb.value === params.get('category')) cb.checked = true
+      })
+    }
+
+    window.applyFilters = async function() {
+      const q = document.getElementById('search-input').value.trim()
+      const wilaya = wilayaSelect.value
+      const maxPrice = document.getElementById('filter-price').value
+      const sort = document.getElementById('sort-select').value
+      const selectedCats = [...document.querySelectorAll('.cat-check:checked')].map(cb => cb.value)
+
+      let query = supabase
+        .from('listings')
+        .select('*, categories(nom)')
+        .eq('statut', 'actif')
+
+      if (q) query = query.ilike('titre', `%${q}%`)
+      if (wilaya) query = query.eq('wilaya', wilaya)
+      if (maxPrice) query = query.lte('prix_par_jour', parseFloat(maxPrice))
+      if (sort === 'prix_par_jour') query = query.order('prix_par_jour', { ascending: true })
+      else if (sort === 'note_moyenne') query = query.order('note_moyenne', { ascending: false })
+      else query = query.order('cree_le', { ascending: false })
+
+      const { data: listings, error } = await query
+
+      let filtered = listings || []
+      if (selectedCats.length > 0) {
+        filtered = filtered.filter(l => selectedCats.includes(l.categories?.nom))
+      }
+
+      document.getElementById('results-count').textContent = `${filtered.length} annonce${filtered.length !== 1 ? 's' : ''} trouvée${filtered.length !== 1 ? 's' : ''}`
+
+      const grid = document.getElementById('listings-grid')
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <div class="empty-state-icon">🔍</div>
+            <div class="empty-state-title">Aucun résultat</div>
+            <p>Essayez avec d'autres filtres.</p>
+          </div>`
+      } else {
+        grid.innerHTML = filtered.map(renderListingCard).join('')
+      }
+    }
+
+    window.clearFilters = function() {
+      document.getElementById('search-input').value = ''
+      wilayaSelect.value = ''
+      document.getElementById('filter-price').value = ''
+      document.querySelectorAll('.cat-check').forEach(cb => cb.checked = false)
+      applyFilters()
+    }
+
+    // Search on typing
+    let searchTimeout
+    document.getElementById('search-input').addEventListener('input', () => {
+      clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(applyFilters, 400)
+    })
+
+    applyFilters()
+  </script>
+</body>
+</html>

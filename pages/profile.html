@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon profil — Nouvelor</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      padding: 36px;
+      background: var(--dark2);
+      border: 1px solid var(--dark4);
+      border-radius: var(--radius-lg);
+      margin-bottom: 36px;
+    }
+    .profile-avatar {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: var(--dark3);
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 32px;
+      color: var(--gold);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-name {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 400;
+    }
+    .profile-meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .booking-item {
+      background: var(--dark2);
+      border: 1px solid var(--dark4);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .booking-info { flex: 1; }
+    .booking-listing-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 400;
+      margin-bottom: 4px;
+    }
+    .booking-dates { font-size: 12px; color: var(--muted); }
+    .booking-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div id="navbar-container"></div>
+  <div class="page">
+    <div class="container section" id="profile-container">
+      <div style="color:var(--muted)">Chargement...</div>
+    </div>
+  </div>
+  <div id="footer-container"></div>
+
+  <script type="module">
+    import { renderNavbar, renderFooter, renderStars, formatPrice, formatDate, initAuth, showToast } from '../js/main.js'
+    import { supabase } from '../js/supabase.js'
+
+    document.getElementById('navbar-container').innerHTML = renderNavbar()
+    document.getElementById('footer-container').innerHTML = renderFooter()
+    const { user, profile } = await initAuth()
+
+    if (!user) { window.location.href = '/pages/auth.html'; return }
+
+    // Load all data
+    const [{ data: myListings }, { data: myBookings }, { data: receivedBookings }, { data: notifications }] = await Promise.all([
+      supabase.from('listings').select('*, categories(nom)').eq('owner_id', user.id).order('cree_le', { ascending: false }),
+      supabase.from('bookings').select('*, listings(titre, prix_par_jour)').eq('renter_id', user.id).order('cree_le', { ascending: false }),
+      supabase.from('bookings').select('*, listings!inner(titre, owner_id), users!renter_id(nom, telephone)').eq('listings.owner_id', user.id).order('cree_le', { ascending: false }),
+      supabase.from('notifications').select('*').eq('user_id', user.id).order('cree_le', { ascending: false }).limit(20)
+    ])
+
+    const unreadCount = notifications?.filter(n => !n.lu).length || 0
+
+    document.getElementById('profile-container').innerHTML = `
+      <div class="profile-header">
+        <div class="profile-avatar">${profile?.photo_profil ? `<img src="${profile.photo_profil}">` : (profile?.nom?.[0] || '?')}</div>
+        <div style="flex:1">
+          <div class="profile-name">${profile?.nom || 'Utilisateur'}</div>
+          <div class="profile-meta">
+            ${profile?.wilaya ? `📍 ${profile.wilaya}` : ''}
+            ${profile?.telephone ? ` · 📞 ${profile.telephone}` : ''}
+          </div>
+          <div class="profile-meta" style="margin-top:4px">
+            ${profile?.note_moyenne > 0 ? renderStars(profile.note_moyenne) + ` ${profile.note_moyenne}/5` : 'Aucun avis'}
+          </div>
+        </div>
+        <a href="/pages/publish.html" class="btn btn-gold">+ Nouvelle annonce</a>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('listings')">Mes annonces (${myListings?.length || 0})</button>
+        <button class="tab-btn" onclick="switchTab('bookings')">Mes demandes (${myBookings?.length || 0})</button>
+        <button class="tab-btn" onclick="switchTab('received')">
+          Demandes reçues (${receivedBookings?.length || 0})
+        </button>
+        <button class="tab-btn" onclick="switchTab('notifs')">
+          Notifications ${unreadCount > 0 ? `<span style="background:var(--gold);color:var(--dark);font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">${unreadCount}</span>` : ''}
+        </button>
+      </div>
+
+      <!-- MY LISTINGS -->
+      <div id="tab-listings" class="tab-content active">
+        ${myListings && myListings.length > 0
+          ? `<div class="grid-listings">${myListings.map(l => `
+              <div class="card">
+                ${l.photos?.[0] ? `<img class="card-img" src="${l.photos[0]}">` : `<div class="card-img-placeholder">📦</div>`}
+                <div class="card-body">
+                  <div class="card-category">${l.categories?.nom || 'Autre'}</div>
+                  <div class="card-title">${l.titre}</div>
+                  <div class="card-footer">
+                    <div class="card-price">${formatPrice(l.prix_par_jour)}<span>/jour</span></div>
+                    <span class="badge badge-${l.statut === 'actif' ? 'active' : 'pending'}">${l.statut}</span>
+                  </div>
+                  <div style="display:flex;gap:8px;margin-top:12px">
+                    <a href="/pages/listing.html?id=${l.id}" class="btn btn-ghost btn-sm">Voir</a>
+                    <button class="btn btn-danger btn-sm" onclick="deleteListing('${l.id}')">Supprimer</button>
+                    <button class="btn btn-outline btn-sm" onclick="toggleListing('${l.id}','${l.statut}')">
+                      ${l.statut === 'actif' ? 'Désactiver' : 'Activer'}
+                    </button>
+                  </div>
+                </div>
+              </div>`).join('')}</div>`
+          : `<div class="empty-state">
+              <div class="empty-state-icon">🏷️</div>
+              <div class="empty-state-title">Aucune annonce</div>
+              <p>Publiez votre première annonce et commencez à gagner !</p>
+              <a href="/pages/publish.html" class="btn btn-gold">Publier maintenant</a>
+            </div>`}
+      </div>
+
+      <!-- MY BOOKING REQUESTS -->
+      <div id="tab-bookings" class="tab-content">
+        ${myBookings && myBookings.length > 0
+          ? myBookings.map(b => `
+            <div class="booking-item">
+              <div class="booking-info">
+                <div class="booking-listing-title">${b.listings?.titre || 'Annonce supprimée'}</div>
+                <div class="booking-dates">${formatDate(b.date_debut)} → ${formatDate(b.date_fin)}</div>
+                <div style="margin-top:6px">${formatPrice(b.prix_total || 0)} total</div>
+              </div>
+              <div class="booking-actions">
+                <span class="badge badge-${b.statut === 'approuve' ? 'approved' : b.statut === 'refuse' ? 'refused' : 'pending'}">
+                  ${b.statut === 'en_attente' ? 'En attente' : b.statut === 'approuve' ? 'Approuvé ✓' : b.statut === 'refuse' ? 'Refusé' : b.statut}
+                </span>
+                ${b.statut === 'approuve' && !b.reviewed ? `<button class="btn btn-outline btn-sm" onclick="openReview('${b.id}','${b.listing_id}')">Laisser un avis</button>` : ''}
+              </div>
+            </div>`).join('')
+          : `<div class="empty-state">
+              <div class="empty-state-icon">📅</div>
+              <div class="empty-state-title">Aucune demande envoyée</div>
+              <p>Parcourez les annonces et faites votre première demande.</p>
+              <a href="/pages/listings.html" class="btn btn-gold">Parcourir</a>
+            </div>`}
+      </div>
+
+      <!-- RECEIVED BOOKINGS -->
+      <div id="tab-received" class="tab-content">
+        ${receivedBookings && receivedBookings.length > 0
+          ? receivedBookings.map(b => `
+            <div class="booking-item">
+              <div class="booking-info">
+                <div class="booking-listing-title">${b.listings?.titre || '—'}</div>
+                <div class="booking-dates">
+                  De : <strong>${b.users?.nom || 'Utilisateur'}</strong>
+                  ${b.users?.telephone ? ` · ${b.users.telephone}` : ''}
+                </div>
+                <div class="booking-dates" style="margin-top:4px">${formatDate(b.date_debut)} → ${formatDate(b.date_fin)}</div>
+                ${b.message ? `<div style="font-size:13px;color:var(--muted);margin-top:6px;font-style:italic">"${b.message}"</div>` : ''}
+              </div>
+              <div class="booking-actions">
+                ${b.statut === 'en_attente'
+                  ? `<button class="btn btn-gold btn-sm" onclick="respondBooking('${b.id}','approuve')">Approuver</button>
+                     <button class="btn btn-danger btn-sm" onclick="respondBooking('${b.id}','refuse')">Refuser</button>`
+                  : `<span class="badge badge-${b.statut === 'approuve' ? 'approved' : 'refused'}">
+                      ${b.statut === 'approuve' ? 'Approuvé' : 'Refusé'}
+                    </span>`}
+              </div>
+            </div>`).join('')
+          : `<div class="empty-state">
+              <div class="empty-state-icon">📬</div>
+              <div class="empty-state-title">Aucune demande reçue</div>
+              <p>Les demandes de location apparaîtront ici.</p>
+            </div>`}
+      </div>
+
+      <!-- NOTIFICATIONS -->
+      <div id="tab-notifs" class="tab-content">
+        ${notifications && notifications.length > 0
+          ? notifications.map(n => `
+            <div style="padding:16px 20px;background:var(--dark2);border:1px solid ${n.lu ? 'var(--dark4)' : 'rgba(201,168,76,0.3)'};border-radius:var(--radius);margin-bottom:10px;cursor:pointer" onclick="markRead('${n.id}')">
+              <div style="font-size:14px;color:${n.lu ? 'var(--muted)' : 'var(--light)'}">${n.message}</div>
+              <div style="font-size:11px;color:var(--muted2);margin-top:4px">${formatDate(n.cree_le)}</div>
+            </div>`).join('')
+          : `<div class="empty-state">
+              <div class="empty-state-icon">🔔</div>
+              <div class="empty-state-title">Aucune notification</div>
+            </div>`}
+      </div>
+    `
+
+    // Review modal
+    window.openReview = function(bookingId, listingId) {
+      const modal = document.createElement('div')
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px'
+      modal.innerHTML = `
+        <div style="background:var(--dark2);border:1px solid var(--dark4);border-radius:var(--radius-lg);padding:36px;width:100%;max-width:420px">
+          <div style="font-family:var(--font-display);font-size:28px;margin-bottom:24px">Laisser un avis</div>
+          <div class="form-group">
+            <label class="form-label">Note</label>
+            <div style="display:flex;gap:8px;margin-bottom:4px" id="star-selector">
+              ${[1,2,3,4,5].map(n => `<span style="font-size:28px;cursor:pointer;color:var(--dark4)" data-val="${n}" onclick="setRating(${n})">★</span>`).join('')}
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Commentaire</label>
+            <textarea class="form-input" id="review-comment" placeholder="Partagez votre expérience..."></textarea>
+          </div>
+          <div style="display:flex;gap:12px">
+            <button class="btn btn-gold btn-full" onclick="submitReview('${bookingId}','${listingId}')">Envoyer</button>
+            <button class="btn btn-ghost" onclick="this.closest('[style]').remove()">Annuler</button>
+          </div>
+        </div>`
+      document.body.appendChild(modal)
+    }
+
+    window.currentRating = 0
+    window.setRating = function(val) {
+      window.currentRating = val
+      document.querySelectorAll('#star-selector span').forEach((s, i) => {
+        s.style.color = i < val ? 'var(--gold)' : 'var(--dark4)'
+      })
+    }
+
+    window.submitReview = async function(bookingId, listingId) {
+      if (!window.currentRating) return showToast('Choisissez une note.', 'error')
+      const comment = document.getElementById('review-comment').value.trim()
+      const { error } = await supabase.from('reviews').insert({
+        booking_id: bookingId,
+        listing_id: listingId,
+        auteur_id: user.id,
+        note: window.currentRating,
+        commentaire: comment
+      })
+      if (error) return showToast('Erreur. Réessayez.', 'error')
+      showToast('Avis publié !', 'success')
+      document.querySelector('[style*="position:fixed"]')?.remove()
+    }
+
+    window.respondBooking = async function(bookingId, statut) {
+      const { error } = await supabase.from('bookings').update({ statut }).eq('id', bookingId)
+      if (!error) { showToast(statut === 'approuve' ? 'Demande approuvée !' : 'Demande refusée.', 'success'); location.reload() }
+    }
+
+    window.deleteListing = async function(id) {
+      if (!confirm('Supprimer cette annonce ?')) return
+      await supabase.from('listings').delete().eq('id', id)
+      showToast('Annonce supprimée.', 'success')
+      location.reload()
+    }
+
+    window.toggleListing = async function(id, currentStatus) {
+      const newStatus = currentStatus === 'actif' ? 'inactif' : 'actif'
+      await supabase.from('listings').update({ statut: newStatus }).eq('id', id)
+      location.reload()
+    }
+
+    window.markRead = async function(id) {
+      await supabase.from('notifications').update({ lu: true }).eq('id', id)
+    }
+
+    window.switchTab = function(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
+      const tabIndex = ['listings','bookings','received','notifs'].indexOf(tab)
+      document.querySelectorAll('.tab-btn')[tabIndex]?.classList.add('active')
+      document.getElementById(`tab-${tab}`)?.classList.add('active')
+    }
+  </script>
+</body>
+</html>

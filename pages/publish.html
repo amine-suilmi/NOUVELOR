@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Publier une annonce — Nouvelor</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .publish-layout { max-width: 700px; margin: 0 auto; }
+    .publish-title {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 300;
+      margin-bottom: 8px;
+    }
+    .photo-upload-area {
+      border: 2px dashed var(--dark4);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: 8px;
+    }
+    .photo-upload-area:hover { border-color: var(--gold); }
+    .photo-upload-area.dragover { border-color: var(--gold); background: rgba(201,168,76,0.05); }
+    .photo-preview { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .photo-thumb {
+      position: relative;
+      width: 90px; height: 90px;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-thumb button {
+      position: absolute;
+      top: 4px; right: 4px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      border-radius: 50%;
+      width: 22px; height: 22px;
+      font-size: 12px;
+      line-height: 1;
+    }
+    .step-indicator {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 36px;
+    }
+    .step-dot {
+      height: 3px;
+      flex: 1;
+      background: var(--dark4);
+      border-radius: 2px;
+      transition: var(--transition);
+    }
+    .step-dot.active { background: var(--gold); }
+  </style>
+</head>
+<body>
+  <div id="navbar-container"></div>
+  <div class="page">
+    <div class="container section">
+      <div class="publish-layout">
+        <div class="publish-title">Publier une annonce</div>
+        <div class="gold-line"></div>
+        <div id="publish-alert"></div>
+
+        <form id="publish-form">
+          <!-- Step indicator -->
+          <div class="step-indicator">
+            <div class="step-dot active"></div>
+            <div class="step-dot active"></div>
+            <div class="step-dot active"></div>
+          </div>
+
+          <!-- BASIC INFO -->
+          <div class="form-group">
+            <label class="form-label">Titre de l'annonce *</label>
+            <input type="text" class="form-input" id="titre" placeholder="ex: Canon EOS 5D Mark IV — Appareil photo professionnel" maxlength="150">
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group">
+              <label class="form-label">Catégorie *</label>
+              <select class="form-input" id="categorie">
+                <option value="">Choisir...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Prix par jour (DT) *</label>
+              <input type="number" class="form-input" id="prix" placeholder="ex: 50" min="1" step="0.5">
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group">
+              <label class="form-label">Wilaya *</label>
+              <select class="form-input" id="wilaya">
+                <option value="">Choisir...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ville</label>
+              <input type="text" class="form-input" id="ville" placeholder="ex: Lac 2, Tunis">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-input" id="description" placeholder="Décrivez votre objet : état, caractéristiques, conditions de location, caution éventuelle..." style="min-height:140px"></textarea>
+          </div>
+
+          <!-- PHOTOS -->
+          <div class="form-group">
+            <label class="form-label">Photos (max 5)</label>
+            <div class="photo-upload-area" id="upload-area" onclick="document.getElementById('photo-input').click()">
+              <div style="font-size:32px;margin-bottom:12px">📸</div>
+              <div style="font-size:14px;color:var(--light2);margin-bottom:4px">Cliquez pour ajouter des photos</div>
+              <div style="font-size:12px;color:var(--muted)">JPG, PNG — max 5 Mo chacune</div>
+            </div>
+            <input type="file" id="photo-input" accept="image/*" multiple style="display:none">
+            <div class="photo-preview" id="photo-preview"></div>
+          </div>
+
+          <button type="button" class="btn btn-gold btn-full btn-lg" id="btn-publish" onclick="publishListing()">
+            Publier mon annonce
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div id="footer-container"></div>
+
+  <script type="module">
+    import { renderNavbar, renderFooter, WILAYAS, CATEGORY_ICONS, initAuth, showToast } from '../js/main.js'
+    import { supabase } from '../js/supabase.js'
+
+    document.getElementById('navbar-container').innerHTML = renderNavbar()
+    document.getElementById('footer-container').innerHTML = renderFooter()
+    const { user } = await initAuth()
+
+    if (!user) {
+      window.location.href = '/pages/auth.html?redirect=/pages/publish.html'
+    }
+
+    // Load categories from DB
+    const { data: cats } = await supabase.from('categories').select('*')
+    const catSelect = document.getElementById('categorie')
+    cats?.forEach(c => {
+      const opt = document.createElement('option')
+      opt.value = c.id; opt.textContent = `${c.icone} ${c.nom}`
+      catSelect.appendChild(opt)
+    })
+
+    // Populate wilayas
+    const wilayaSelect = document.getElementById('wilaya')
+    WILAYAS.forEach(w => {
+      const opt = document.createElement('option')
+      opt.value = w; opt.textContent = w
+      wilayaSelect.appendChild(opt)
+    })
+
+    // Photo upload
+    let photoFiles = []
+    document.getElementById('photo-input').addEventListener('change', e => {
+      const files = [...e.target.files]
+      photoFiles = [...photoFiles, ...files].slice(0, 5)
+      renderPreviews()
+    })
+
+    function renderPreviews() {
+      const preview = document.getElementById('photo-preview')
+      preview.innerHTML = ''
+      photoFiles.forEach((file, i) => {
+        const url = URL.createObjectURL(file)
+        preview.innerHTML += `
+          <div class="photo-thumb">
+            <img src="${url}">
+            <button onclick="removePhoto(${i})">×</button>
+          </div>`
+      })
+    }
+
+    window.removePhoto = function(i) {
+      photoFiles.splice(i, 1)
+      renderPreviews()
+    }
+
+    window.publishListing = async function() {
+      const titre = document.getElementById('titre').value.trim()
+      const categorieId = document.getElementById('categorie').value
+      const prix = parseFloat(document.getElementById('prix').value)
+      const wilaya = document.getElementById('wilaya').value
+      const ville = document.getElementById('ville').value.trim()
+      const description = document.getElementById('description').value.trim()
+
+      if (!titre || !categorieId || !prix || !wilaya) {
+        document.getElementById('publish-alert').innerHTML = `<div class="alert alert-error">Veuillez remplir les champs obligatoires (*).</div>`
+        window.scrollTo(0, 0)
+        return
+      }
+
+      const btn = document.getElementById('btn-publish')
+      btn.disabled = true
+      btn.innerHTML = '<span class="spinner"></span> Publication en cours...'
+
+      // Upload photos
+      let photoUrls = []
+      for (const file of photoFiles) {
+        const fileName = `${user.id}/${Date.now()}_${file.name.replace(/\s/g, '_')}`
+        const { data, error } = await supabase.storage.from('listings').upload(fileName, file)
+        if (!error) {
+          const { data: { publicUrl } } = supabase.storage.from('listings').getPublicUrl(fileName)
+          photoUrls.push(publicUrl)
+        }
+      }
+
+      const { data, error } = await supabase.from('listings').insert({
+        owner_id: user.id,
+        categorie_id: parseInt(categorieId),
+        titre, prix_par_jour: prix,
+        wilaya, ville, description,
+        photos: photoUrls
+      }).select().single()
+
+      btn.disabled = false
+      btn.textContent = 'Publier mon annonce'
+
+      if (error) {
+        document.getElementById('publish-alert').innerHTML = `<div class="alert alert-error">Erreur lors de la publication. Réessayez.</div>`
+        return
+      }
+
+      showToast('Annonce publiée avec succès !', 'success')
+      setTimeout(() => window.location.href = `/pages/listing.html?id=${data.id}`, 1000)
+    }
+  </script>
+</body>
+</html>

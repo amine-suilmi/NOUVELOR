@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion — Nouvelor</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.05) 0%, transparent 60%);
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--dark2);
+      border: 1px solid var(--dark4);
+      border-radius: var(--radius-lg);
+      padding: 48px 40px;
+    }
+    .auth-logo {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 2px;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .auth-tagline {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 36px;
+    }
+    .auth-tabs {
+      display: flex;
+      background: var(--dark3);
+      border-radius: var(--radius);
+      padding: 4px;
+      margin-bottom: 32px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: var(--transition);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .auth-tab.active {
+      background: var(--gold);
+      color: var(--dark);
+    }
+    .auth-switch {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 24px;
+    }
+    .auth-switch a {
+      color: var(--gold);
+      cursor: pointer;
+    }
+    .auth-switch a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">NOUVELOR</div>
+      <div class="auth-tagline">Le nouvel or de la location</div>
+
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login" onclick="switchTab('login')">Connexion</div>
+        <div class="auth-tab" id="tab-register" onclick="switchTab('register')">Inscription</div>
+      </div>
+
+      <div id="alert-container"></div>
+
+      <!-- LOGIN FORM -->
+      <div id="form-login">
+        <div class="form-group">
+          <label class="form-label">Adresse email</label>
+          <input type="email" class="form-input" id="login-email" placeholder="votre@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mot de passe</label>
+          <input type="password" class="form-input" id="login-password" placeholder="••••••••">
+        </div>
+        <button class="btn btn-gold btn-full" id="btn-login" onclick="doLogin()">
+          Se connecter
+        </button>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div id="form-register" class="hidden">
+        <div class="form-group">
+          <label class="form-label">Nom complet</label>
+          <input type="text" class="form-input" id="reg-nom" placeholder="Votre nom">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Adresse email</label>
+          <input type="email" class="form-input" id="reg-email" placeholder="votre@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Téléphone</label>
+          <input type="tel" class="form-input" id="reg-tel" placeholder="+216 XX XXX XXX">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Wilaya</label>
+          <select class="form-input" id="reg-wilaya">
+            <option value="">Choisir une wilaya</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mot de passe</label>
+          <input type="password" class="form-input" id="reg-password" placeholder="Minimum 6 caractères">
+        </div>
+        <button class="btn btn-gold btn-full" id="btn-register" onclick="doRegister()">
+          Créer mon compte
+        </button>
+      </div>
+
+      <div class="auth-switch">
+        <span id="switch-text">Pas encore de compte ?</span>
+        <a onclick="switchTab(currentTab === 'login' ? 'register' : 'login')" id="switch-link">S'inscrire</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../js/supabase.js'
+    import { WILAYAS } from '../js/main.js'
+
+    // Populate wilayas
+    const wilayaSelect = document.getElementById('reg-wilaya')
+    WILAYAS.forEach(w => {
+      const opt = document.createElement('option')
+      opt.value = w
+      opt.textContent = w
+      wilayaSelect.appendChild(opt)
+    })
+
+    // Check URL params
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('mode') === 'register') switchTab('register')
+
+    window.currentTab = 'login'
+
+    window.switchTab = function(tab) {
+      currentTab = tab
+      document.getElementById('form-login').classList.toggle('hidden', tab !== 'login')
+      document.getElementById('form-register').classList.toggle('hidden', tab !== 'register')
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login')
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register')
+      document.getElementById('switch-text').textContent = tab === 'login' ? 'Pas encore de compte ?' : 'Déjà un compte ?'
+      document.getElementById('switch-link').textContent = tab === 'login' ? "S'inscrire" : 'Se connecter'
+      document.getElementById('alert-container').innerHTML = ''
+    }
+
+    function showAlert(msg, type = 'error') {
+      document.getElementById('alert-container').innerHTML =
+        `<div class="alert alert-${type}">${msg}</div>`
+    }
+
+    function setLoading(btnId, loading) {
+      const btn = document.getElementById(btnId)
+      btn.disabled = loading
+      btn.innerHTML = loading
+        ? '<span class="spinner"></span>'
+        : (btnId === 'btn-login' ? 'Se connecter' : 'Créer mon compte')
+    }
+
+    window.doLogin = async function() {
+      const email = document.getElementById('login-email').value.trim()
+      const password = document.getElementById('login-password').value
+      if (!email || !password) return showAlert('Veuillez remplir tous les champs.')
+      setLoading('btn-login', true)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      setLoading('btn-login', false)
+      if (error) return showAlert('Email ou mot de passe incorrect.')
+      const redirect = params.get('redirect') || '/index.html'
+      window.location.href = redirect
+    }
+
+    window.doRegister = async function() {
+      const nom = document.getElementById('reg-nom').value.trim()
+      const email = document.getElementById('reg-email').value.trim()
+      const tel = document.getElementById('reg-tel').value.trim()
+      const wilaya = document.getElementById('reg-wilaya').value
+      const password = document.getElementById('reg-password').value
+
+      if (!nom || !email || !wilaya || !password) return showAlert('Veuillez remplir tous les champs obligatoires.')
+      if (password.length < 6) return showAlert('Le mot de passe doit faire au moins 6 caractères.')
+
+      setLoading('btn-register', true)
+
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) { setLoading('btn-register', false); return showAlert(error.message) }
+
+      if (data.user) {
+        const { error: profileError } = await supabase.from('users').insert({
+          id: data.user.id,
+          nom, telephone: tel, wilaya
+        })
+        if (profileError) { setLoading('btn-register', false); return showAlert('Erreur lors de la création du profil.') }
+      }
+
+      setLoading('btn-register', false)
+      showAlert('Compte créé avec succès ! Vous pouvez vous connecter.', 'success')
+      setTimeout(() => switchTab('login'), 2000)
+    }
+
+    // Enter key support
+    document.addEventListener('keypress', e => {
+      if (e.key === 'Enter') {
+        if (currentTab === 'login') window.doLogin()
+        else window.doRegister()
+      }
+    })
+  </script>
+</body>
+</html>
